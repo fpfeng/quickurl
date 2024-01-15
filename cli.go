@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"slices"
-	"strings"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -50,10 +49,12 @@ func StartCLI(cliArgs []string) *CLIParseResult {
 
 			simpleModeFiles := make([]string, 0)
 			for _, arg := range rawArgs {
-				if !strings.Contains(arg, "-") { // is flag?
-					if _, err := os.Stat(arg); err != nil {
+				log.Debug(arg)
+				if _, err := os.Stat(arg); err != nil {
+					if string(arg[0]) != "-" && len(arg) != 2 {
 						log.Fatal(err)
 					}
+				} else {
 					simpleModeFiles = append(simpleModeFiles, arg)
 				}
 			}
