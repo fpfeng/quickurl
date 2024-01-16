@@ -19,6 +19,9 @@ type QuickURL struct {
 }
 
 func NewQuickURL(cliConfig *CLIParseResult) *QuickURL {
+	if len(cliConfig.Files) == 0 {
+		os.Exit(0)
+	}
 	qu := &QuickURL{
 		ListeningPort: cliConfig.Port,
 		ServingFiles:  map[string]string{},

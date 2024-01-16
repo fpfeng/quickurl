@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"slices"
 
@@ -8,6 +9,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const Version = "0.0.3"
 const DefaultPort = 5731
 
 type CLIParseResult struct {
@@ -17,18 +19,32 @@ type CLIParseResult struct {
 }
 
 func StartCLI(cliArgs []string) *CLIParseResult {
+	cli.AppHelpTemplate = `
+ NAME:
+	{{.Name}} - {{.Usage}}
+
+ USAGE:
+	quickurl /path/to/file1 /path/to/file2
+	quickurl -s /path/to/file1 -s /path/to/file2 -p 8080
+{{if .Commands}}
+ OPTIONS:
+	{{range .VisibleFlags}}{{.}}
+	{{end}}{{end}}`
 	result := CLIParseResult{Port: 0, Files: make([]string, 0)}
 	app := &cli.App{
+		Name:  fmt.Sprintf("QuickURL %v", Version),
+		Usage: "Sharing file with http instantly",
 		Flags: []cli.Flag{
 			&cli.IntFlag{
 				Name:        "p",
-				Usage:       "listening port",
+				Usage:       "listening `port number`",
 				Value:       DefaultPort,
 				Destination: &result.Port,
 			},
 			&cli.StringSliceFlag{
-				Name:  "s",
-				Usage: "serving filepath",
+				Name:      "s",
+				Usage:     "serving filepath, -s /path/to/file1 -s /path/to/file2",
+				TakesFile: true,
 			},
 			&cli.BoolFlag{
 				Name:        "v",
@@ -47,6 +63,7 @@ func StartCLI(cliArgs []string) *CLIParseResult {
 			}
 			log.Debugf("args: %v", rawArgs)
 
+			servingArgfiles := cCtx.StringSlice("s")
 			simpleModeFiles := make([]string, 0)
 			for _, arg := range rawArgs {
 				log.Debug(arg)
@@ -60,8 +77,11 @@ func StartCLI(cliArgs []string) *CLIParseResult {
 			}
 			if len(simpleModeFiles) > 0 {
 				result.Files = append(result.Files, simpleModeFiles...)
+			} else if len(servingArgfiles) > 0 {
+				result.Files = append(result.Files, servingArgfiles...)
 			} else {
-				result.Files = append(result.Files, cCtx.StringSlice("s")...)
+				cli.ShowAppHelp(cCtx)
+				return nil
 			}
 			return nil
 		},
