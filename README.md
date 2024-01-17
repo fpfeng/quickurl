@@ -29,5 +29,6 @@ quickurl -s /path/to/file1 -s /path/to/file2 -p 8080
 - Support folders
 - Support download items at once
 - Support upload
+- Fetch public IPs from external API
 - Testing
 - Improve output such as colorful result, support JSON and YAML
