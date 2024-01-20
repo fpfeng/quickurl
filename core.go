@@ -148,4 +148,14 @@ func (qu *QuickURL) PrintAccessURLs() {
 			fmt.Printf("%v\n\n", url.String())
 		}
 	}
+	for _, addr := range GetMachineAddresses() {
+		url := BuildAccessURL(addr, qu.ListeningPort, DownThemAllArchiveFilename)
+		q := url.Query()
+		q.Set("archive", "zip")
+		url.RawQuery = q.Encode()
+		fmt.Printf("%v\n", url.String())
+		q.Set("archive", "tar.gz")
+		url.RawQuery = q.Encode()
+		fmt.Printf("%v\n\n", url.String())
+	}
 }

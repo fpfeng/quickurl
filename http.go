@@ -8,7 +8,10 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"golang.org/x/exp/maps"
 )
+
+const DownThemAllArchiveFilename = "DownThemAll"
 
 type HttpHandlers struct {
 	QuickURL *QuickURL
@@ -56,4 +59,28 @@ func (quh *HttpHandlers) OriginalFile(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusNotFound)
 	}
+}
+
+func (quh *HttpHandlers) DownThemAll(w http.ResponseWriter, r *http.Request) {
+	format := mux.Vars(r)["archive"]
+	contentType, ok := MIME[format]
+	if !ok {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	archiveFilename := fmt.Sprintf("%v_%v.%v", "DownThemAll", time.Now().Unix(), format) // TODO is it too simple?
+	log.Debugf("request %v", archiveFilename)
+
+	result, err := quh.QuickURL.CreateArchive(maps.Values(quh.QuickURL.ServingFiles), format)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		log.Fatal(err)
+		return
+	}
+
+	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, archiveFilename))
+	http.ServeContent(w, r, archiveFilename, time.Now(), bytes.NewReader(result))
 }

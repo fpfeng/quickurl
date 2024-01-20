@@ -27,7 +27,7 @@ quickurl -s /path/to/file1 -s /path/to/file2 -p 8080
 
 ## Development Roadmap
 - Support folders
-- Support download items at once
+- ~~Support download items at once~~
 - Support upload
 - Fetch public IPs from external API
 - Update by itself

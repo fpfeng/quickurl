@@ -18,7 +18,10 @@ func main() {
 	quickURL := NewQuickURL(cliConfig)
 	handlers := HttpHandlers{QuickURL: quickURL}
 	router := mux.NewRouter()
-	router.HandleFunc("/{filename}", handlers.CreateArchive).Queries("archive", "{archive}")
+	router.HandleFunc(fmt.Sprintf("/%v", DownThemAllArchiveFilename),
+		handlers.DownThemAll).Queries("archive", "{archive}")
+	router.HandleFunc("/{filename}",
+		handlers.CreateArchive).Queries("archive", "{archive}")
 	router.HandleFunc("/{filename}", handlers.OriginalFile)
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%v", quickURL.ListeningPort),
