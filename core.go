@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -16,6 +17,7 @@ import (
 type QuickURL struct {
 	ListeningPort int
 	ServingFiles  map[string]string
+	PublicIPOnly  bool
 }
 
 func NewQuickURL(cliConfig *CLIParseResult) *QuickURL {
@@ -25,6 +27,7 @@ func NewQuickURL(cliConfig *CLIParseResult) *QuickURL {
 	qu := &QuickURL{
 		ListeningPort: cliConfig.Port,
 		ServingFiles:  map[string]string{},
+		PublicIPOnly:  cliConfig.PublicIPOnly,
 	}
 	for _, filepath := range cliConfig.Files {
 		qu.AddServingFile(filepath)
@@ -133,29 +136,24 @@ func (qu *QuickURL) CreateArchive(filePaths []string, format string) ([]byte, er
 	}
 }
 
+func printArchiveURLs(url url.URL) {
+	q := url.Query()
+	q.Set("archive", "zip")
+	url.RawQuery = q.Encode()
+	fmt.Printf("%v\n", url.String())
+	q.Set("archive", "tar.gz")
+	url.RawQuery = q.Encode()
+	fmt.Printf("%v\n\n", url.String())
+}
+
 func (qu *QuickURL) PrintAccessURLs() {
 	// TODO replace with template
-	for _, filename := range qu.ListFileNames() {
-		for _, addr := range GetMachineAddresses() {
+	for _, addr := range GetMachineAddresses(qu.PublicIPOnly) {
+		for _, filename := range qu.ListFileNames() {
 			url := BuildAccessURL(addr, qu.ListeningPort, filename)
 			fmt.Printf("%v\n", url.String())
-			q := url.Query()
-			q.Set("archive", "zip")
-			url.RawQuery = q.Encode()
-			fmt.Printf("%v\n", url.String())
-			q.Set("archive", "tar.gz")
-			url.RawQuery = q.Encode()
-			fmt.Printf("%v\n\n", url.String())
+			printArchiveURLs(url)
 		}
-	}
-	for _, addr := range GetMachineAddresses() {
-		url := BuildAccessURL(addr, qu.ListeningPort, DownThemAllArchiveFilename)
-		q := url.Query()
-		q.Set("archive", "zip")
-		url.RawQuery = q.Encode()
-		fmt.Printf("%v\n", url.String())
-		q.Set("archive", "tar.gz")
-		url.RawQuery = q.Encode()
-		fmt.Printf("%v\n\n", url.String())
+		printArchiveURLs(BuildAccessURL(addr, qu.ListeningPort, DownThemAllArchiveFilename))
 	}
 }

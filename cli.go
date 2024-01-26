@@ -9,13 +9,14 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const Version = "0.0.3"
+const Version = "0.0.5"
 const DefaultPort = 5731
 
 type CLIParseResult struct {
-	Port    int
-	Files   []string
-	Verbose bool
+	Port         int
+	Files        []string
+	Verbose      bool
+	PublicIPOnly bool
 }
 
 func StartCLI(cliArgs []string) *CLIParseResult {
@@ -50,6 +51,12 @@ func StartCLI(cliArgs []string) *CLIParseResult {
 				Name:        "v",
 				Usage:       "verbose log",
 				Destination: &result.Verbose,
+				Value:       false,
+			},
+			&cli.BoolFlag{
+				Name:        "public-ip",
+				Usage:       "print out public ip from external API only",
+				Destination: &result.PublicIPOnly,
 				Value:       false,
 			},
 		},
