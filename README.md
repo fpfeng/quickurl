@@ -23,13 +23,17 @@ quickurl /path/to/file1 /path/to/file2
 
 # custom port number
 quickurl -s /path/to/file1 -s /path/to/file2 -p 8080
+
+# print public ips only
+quickurl -s /path/to/file1 -s /path/to/file2 -public-ip
 ```
 
 ## Development Roadmap
 - Support folders
 - ~~Support download items at once~~
 - Support upload
-- Fetch public IPs from external API
+- ~~Fetch public IPs from external API~~
 - Update by itself
 - Testing
 - Improve output such as colorful result, support JSON and YAML
+- Install script
