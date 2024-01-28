@@ -33,7 +33,8 @@ quickurl -s /path/to/file1 -s /path/to/file2 -public-ip
 - ~~Support download items at once~~
 - Support upload
 - ~~Fetch public IPs from external API~~
-- Update by itself
+- ~~Update by itself~~
 - Testing
 - Improve output such as colorful result, support JSON and YAML
 - Install script
+- Request log
