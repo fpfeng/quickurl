@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const Version = "0.0.6"
+const Version = "0.0.7"
 const DefaultPort = 5731
 
 type CLIParseResult struct {
@@ -33,7 +33,7 @@ func update(version string) error {
 	}
 
 	if latest.LessOrEqual(version) {
-		fmt.Printf("current version (%s) is the latest", version)
+		fmt.Printf("current version (%s) is the latest\n", version)
 		return nil
 	}
 

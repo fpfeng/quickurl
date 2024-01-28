@@ -154,6 +154,8 @@ func (qu *QuickURL) PrintAccessURLs() {
 			fmt.Printf("%v\n", url.String())
 			printArchiveURLs(url)
 		}
-		printArchiveURLs(BuildAccessURL(addr, qu.ListeningPort, DownThemAllArchiveFilename))
+		if len(qu.ListFileNames()) > 1 {
+			printArchiveURLs(BuildAccessURL(addr, qu.ListeningPort, DownThemAllArchiveFilename))
+		}
 	}
 }
