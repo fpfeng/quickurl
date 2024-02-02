@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const Version = "0.0.7"
+const Version = "0.0.8"
 const DefaultPort = 5731
 
 type CLIParseResult struct {

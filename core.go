@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"text/template"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -18,6 +19,11 @@ type QuickURL struct {
 	ListeningPort int
 	ServingFiles  map[string]string
 	PublicIPOnly  bool
+}
+
+type servingResource struct {
+	Name string   `json:"name"`
+	URLs []string `json:"urls"`
 }
 
 func NewQuickURL(cliConfig *CLIParseResult) *QuickURL {
@@ -136,26 +142,57 @@ func (qu *QuickURL) CreateArchive(filePaths []string, format string) ([]byte, er
 	}
 }
 
-func printArchiveURLs(url url.URL) {
+func generateArchiveURLs(url url.URL) []string {
+	urls := make([]string, 0)
 	q := url.Query()
 	q.Set("archive", "zip")
 	url.RawQuery = q.Encode()
-	fmt.Printf("%v\n", url.String())
+	urls = append(urls, url.String())
 	q.Set("archive", "tar.gz")
 	url.RawQuery = q.Encode()
-	fmt.Printf("%v\n\n", url.String())
+	urls = append(urls, url.String())
+	return urls
 }
 
-func (qu *QuickURL) PrintAccessURLs() {
-	// TODO replace with template
+func (qu *QuickURL) generateAccessURLs() []*servingResource {
+	allURLs := map[string][]string{}
 	for _, addr := range GetMachineAddresses(qu.PublicIPOnly) {
 		for _, filename := range qu.ListFileNames() {
 			url := BuildAccessURL(addr, qu.ListeningPort, filename)
-			fmt.Printf("%v\n", url.String())
-			printArchiveURLs(url)
+			if resource, ok := allURLs[filename]; !ok {
+				r := make([]string, 0)
+				r = append(r, url.String())
+				allURLs[filename] = r
+			} else {
+				allURLs[filename] = append(resource, url.String())
+			}
+			allURLs[filename] = append(allURLs[filename], generateArchiveURLs(url)...)
 		}
 		if len(qu.ListFileNames()) > 1 {
-			printArchiveURLs(BuildAccessURL(addr, qu.ListeningPort, DownThemAllArchiveFilename))
+			url := generateArchiveURLs(BuildAccessURL(addr, qu.ListeningPort, DownThemAllArchiveFilename))
+			allURLs[DownThemAllArchiveFilename] = append(allURLs[DownThemAllArchiveFilename], url...)
 		}
+	}
+	resources := make([]*servingResource, 0)
+	for k, v := range allURLs {
+		res := servingResource{Name: k, URLs: v}
+		resources = append(resources, &res)
+	}
+	return resources
+}
+
+func (qu *QuickURL) PrintAccessURLs() {
+	resources := qu.generateAccessURLs()
+	tpl, err := template.New("URLs").Parse(
+		`{{range .}} 
+	{{range .URLs}}{{.}}
+	{{end}}{{end}}`)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = tpl.Execute(os.Stdout, resources)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
