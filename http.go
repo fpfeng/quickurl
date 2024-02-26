@@ -34,7 +34,7 @@ func (quh *HttpHandlers) CreateArchive(w http.ResponseWriter, r *http.Request) {
 	archiveFilename := fmt.Sprintf("%v.%v", filename, format) // TODO is it too simple?
 	log.Debugf("request %v", archiveFilename)
 
-	if path, ok := quh.QuickURL.ServingFiles[filename]; ok {
+	if path, ok := quh.QuickURL.ServingEntries[filename]; ok {
 		result, err := quh.QuickURL.CreateArchive([]string{path}, format)
 
 		if err != nil {
@@ -54,7 +54,7 @@ func (quh *HttpHandlers) CreateArchive(w http.ResponseWriter, r *http.Request) {
 func (quh *HttpHandlers) OriginalFile(w http.ResponseWriter, r *http.Request) {
 	filename := mux.Vars(r)["filename"]
 	log.Debug(filename)
-	if path, exists := quh.QuickURL.ServingFiles[filename]; exists {
+	if path, exists := quh.QuickURL.ServingEntries[filename]; exists {
 		http.ServeFile(w, r, path)
 	} else {
 		w.WriteHeader(http.StatusNotFound)
@@ -69,10 +69,10 @@ func (quh *HttpHandlers) DownThemAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	archiveFilename := fmt.Sprintf("%v_%v.%v", "DownThemAll", time.Now().Unix(), format) // TODO is it too simple?
+	archiveFilename := fmt.Sprintf("%v_%v.%v", DownThemAllArchiveFilename, time.Now().Unix(), format) // TODO is it too simple?
 	log.Debugf("request %v", archiveFilename)
 
-	result, err := quh.QuickURL.CreateArchive(maps.Values(quh.QuickURL.ServingFiles), format)
+	result, err := quh.QuickURL.CreateArchive(maps.Values(quh.QuickURL.ServingEntries), format)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)

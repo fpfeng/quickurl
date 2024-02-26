@@ -12,12 +12,12 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const Version = "0.0.8"
+const Version = "0.0.9"
 const DefaultPort = 5731
 
 type CLIParseResult struct {
 	Port         int
-	Files        []string
+	Entries      []string
 	Verbose      bool
 	PublicIPOnly bool
 }
@@ -60,7 +60,7 @@ func StartCLI(cliArgs []string) *CLIParseResult {
  OPTIONS:
 	{{range .VisibleFlags}}{{.}}
 	{{end}}{{end}}`
-	result := CLIParseResult{Port: 0, Files: make([]string, 0)}
+	result := CLIParseResult{Port: 0, Entries: make([]string, 0)}
 	app := &cli.App{
 		Name:  fmt.Sprintf("QuickURL %v", Version),
 		Usage: "Sharing file with http instantly",
@@ -73,7 +73,7 @@ func StartCLI(cliArgs []string) *CLIParseResult {
 			},
 			&cli.StringSliceFlag{
 				Name:      "s",
-				Usage:     "serving `filepath`, -s /path/to/file1 -s /path/to/file2",
+				Usage:     "serving `path`, -s /path/to/file1 -s /path/to/folder",
 				TakesFile: true,
 			},
 			&cli.BoolFlag{
@@ -124,9 +124,9 @@ func StartCLI(cliArgs []string) *CLIParseResult {
 				simpleModeFiles = append(simpleModeFiles, arg)
 			}
 			if len(simpleModeFiles) > 0 {
-				result.Files = append(result.Files, simpleModeFiles...)
+				result.Entries = append(result.Entries, simpleModeFiles...)
 			} else if len(servingArgfiles) > 0 {
-				result.Files = append(result.Files, servingArgfiles...)
+				result.Entries = append(result.Entries, servingArgfiles...)
 			}
 			return nil
 		},

@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -16,9 +17,9 @@ import (
 )
 
 type QuickURL struct {
-	ListeningPort int
-	ServingFiles  map[string]string
-	PublicIPOnly  bool
+	ListeningPort  int
+	ServingEntries map[string]string
+	PublicIPOnly   bool
 }
 
 type servingResource struct {
@@ -27,105 +28,170 @@ type servingResource struct {
 }
 
 func NewQuickURL(cliConfig *CLIParseResult) *QuickURL {
-	if len(cliConfig.Files) == 0 {
+	if len(cliConfig.Entries) == 0 {
 		os.Exit(0)
 	}
 	qu := &QuickURL{
-		ListeningPort: cliConfig.Port,
-		ServingFiles:  map[string]string{},
-		PublicIPOnly:  cliConfig.PublicIPOnly,
+		ListeningPort:  cliConfig.Port,
+		ServingEntries: map[string]string{},
+		PublicIPOnly:   cliConfig.PublicIPOnly,
 	}
-	for _, filepath := range cliConfig.Files {
-		qu.AddServingFile(filepath)
+	for _, entryPath := range cliConfig.Entries {
+		qu.AddServingEntry(entryPath)
 	}
 	return qu
 }
 
-func (qu *QuickURL) AddServingFile(path string) {
+func (qu *QuickURL) AddServingEntry(path string) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		log.Fatal(err)
 	}
-	filename := filepath.Base(path)
+	name := filepath.Base(path)
 	// TODO duplicate check
-	qu.ServingFiles[filename] = absPath
+	qu.ServingEntries[name] = absPath
 }
 
-func (qu *QuickURL) ListFileNames() []string {
-	keys := make([]string, 0, len(qu.ServingFiles))
-	for k := range qu.ServingFiles {
+func (qu *QuickURL) ListServingEntryNames() []string {
+	keys := make([]string, 0, len(qu.ServingEntries))
+	for k := range qu.ServingEntries {
 		keys = append(keys, k)
 	}
 	return keys
 }
 
-func (qu *QuickURL) CreateTarGz(filePaths []string) ([]byte, error) {
+func (qu *QuickURL) CreateTarGz(fullPaths []string) ([]byte, error) {
 	var buf bytes.Buffer
 	gzipWriter := gzip.NewWriter(&buf)
-	defer gzipWriter.Close()
-
 	tarWriter := tar.NewWriter(gzipWriter)
-	defer tarWriter.Close()
 
-	for _, filePath := range filePaths {
-		file, err := os.Open(filePath)
+	for _, path := range fullPaths {
+		stat, err := os.Stat(path)
 		if err != nil {
 			return nil, err
 		}
-		defer file.Close()
-
-		fileInfo, err := file.Stat()
-		if err != nil {
-			return nil, err
-		}
-
-		header := &tar.Header{
-			Name: fileInfo.Name(),
-			Size: fileInfo.Size(),
-		}
-
-		if err := tarWriter.WriteHeader(header); err != nil {
-			return nil, err
-		}
-
-		_, err = io.Copy(tarWriter, file)
-		if err != nil {
-			return nil, err
+		mode := stat.Mode()
+		if mode.IsRegular() {
+			header, err := tar.FileInfoHeader(stat, path)
+			if err != nil {
+				return nil, err
+			}
+			if err := tarWriter.WriteHeader(header); err != nil {
+				return nil, err
+			}
+			data, err := os.Open(path)
+			if err != nil {
+				return nil, err
+			}
+			if _, err := io.Copy(tarWriter, data); err != nil {
+				return nil, err
+			}
+		} else if mode.IsDir() {
+			filepath.Walk(path, func(subPath string, fi os.FileInfo, _err error) error {
+				if fi.IsDir() {
+					return nil
+				}
+				header, err := tar.FileInfoHeader(fi, subPath)
+				if err != nil {
+					return err
+				}
+				// https://golang.org/src/archive/tar/common.go?#L626
+				relPath, err := filepath.Rel(path, subPath)
+				if err != nil {
+					return err
+				}
+				header.Name = filepath.ToSlash(relPath)
+				if err := tarWriter.WriteHeader(header); err != nil {
+					return err
+				}
+				data, err := os.Open(subPath)
+				if err != nil {
+					return err
+				}
+				if _, err := io.Copy(tarWriter, data); err != nil {
+					return err
+				}
+				return nil
+			})
+		} else {
+			return nil, errors.New("error: file type not supported")
 		}
 	}
-
+	if err := tarWriter.Close(); err != nil {
+		return nil, err
+	}
+	if err := gzipWriter.Close(); err != nil {
+		return nil, err
+	}
 	return buf.Bytes(), nil
 }
 
-func (qu *QuickURL) CreateZip(filePaths []string) ([]byte, error) {
+func (qu *QuickURL) CreateZip(fullPaths []string) ([]byte, error) {
 	var buffer bytes.Buffer
 	zipWriter := zip.NewWriter(&buffer)
 
-	for _, filePath := range filePaths {
-		file, err := os.Open(filePath)
+	for _, path := range fullPaths {
+		stat, err := os.Stat(path)
 		if err != nil {
 			return nil, err
 		}
-		defer file.Close()
+		mode := stat.Mode()
+		if mode.IsRegular() {
+			header, err := zip.FileInfoHeader(stat)
+			if err != nil {
+				return nil, err
+			}
 
-		fileInfo, err := file.Stat()
-		if err != nil {
-			return nil, err
-		}
+			fileWriter, err := zipWriter.Create(header.Name)
+			if err != nil {
+				return nil, err
+			}
 
-		fileWriter, err := zipWriter.Create(fileInfo.Name())
+			data, err := os.Open(path)
+			if err != nil {
+				return nil, err
+			}
 
-		if err != nil {
-			return nil, err
-		}
+			_, err = io.Copy(fileWriter, data)
+			if err != nil {
+				return nil, err
+			}
+		} else if mode.IsDir() {
+			filepath.Walk(path, func(subPath string, fi os.FileInfo, _err error) error {
+				if fi.IsDir() {
+					return nil
+				}
+				if err != nil {
+					return err
+				}
+				relPath, err := filepath.Rel(path, subPath)
+				if err != nil {
+					return err
+				}
+				relPath = filepath.ToSlash(relPath)
+				fileWriter, err := zipWriter.Create(relPath)
+				if err != nil {
+					return err
+				}
 
-		_, err = io.Copy(fileWriter, file)
-		if err != nil {
-			return nil, err
+				data, err := os.Open(subPath)
+				if err != nil {
+					return err
+				}
+				if _, err := io.Copy(fileWriter, data); err != nil {
+					return err
+				}
+				return nil
+			})
+		} else {
+			return nil, errors.New("error: file type not supported")
 		}
 	}
+
 	// TODO fix defer close would cause empty buffer
-	zipWriter.Close()
+	if err := zipWriter.Close(); err != nil {
+		return nil, err
+	}
 	result := buffer.Bytes()
 	return result, nil
 
@@ -157,18 +223,24 @@ func generateArchiveURLs(url url.URL) []string {
 func (qu *QuickURL) generateAccessURLs() []*servingResource {
 	allURLs := map[string][]string{}
 	for _, addr := range GetMachineAddresses(qu.PublicIPOnly) {
-		for _, filename := range qu.ListFileNames() {
-			url := BuildAccessURL(addr, qu.ListeningPort, filename)
-			if resource, ok := allURLs[filename]; !ok {
-				r := make([]string, 0)
-				r = append(r, url.String())
-				allURLs[filename] = r
-			} else {
-				allURLs[filename] = append(resource, url.String())
+		for baseName, fullPath := range qu.ServingEntries {
+			if _, ok := allURLs[baseName]; !ok {
+				allURLs[baseName] = make([]string, 0)
 			}
-			allURLs[filename] = append(allURLs[filename], generateArchiveURLs(url)...)
+
+			stat, err := os.Stat(fullPath)
+			if err != nil {
+				log.Fatal(err)
+			}
+			url := BuildAccessURL(addr, qu.ListeningPort, baseName)
+			if stat.IsDir() {
+				allURLs[baseName] = append(allURLs[baseName], generateArchiveURLs(url)...)
+			} else { // is file
+				allURLs[baseName] = append(allURLs[baseName], url.String())
+				allURLs[baseName] = append(allURLs[baseName], generateArchiveURLs(url)...)
+			}
 		}
-		if len(qu.ListFileNames()) > 1 {
+		if len(qu.ServingEntries) > 1 {
 			url := generateArchiveURLs(BuildAccessURL(addr, qu.ListeningPort, DownThemAllArchiveFilename))
 			allURLs[DownThemAllArchiveFilename] = append(allURLs[DownThemAllArchiveFilename], url...)
 		}
