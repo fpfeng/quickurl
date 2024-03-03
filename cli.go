@@ -12,7 +12,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const Version = "0.1.0"
+const Version = "0.1.1"
 const DefaultPort = 5731
 
 type CLIParseResult struct {
@@ -54,8 +54,8 @@ func StartCLI(cliArgs []string) *CLIParseResult {
 	{{.Name}} - {{.Usage}}
 
  USAGE:
-	quickurl /path/to/file1 /path/to/file2
-	quickurl -s /path/to/file1 -s /path/to/file2 -p 8080
+	quickurl /path/to/file1 /path/to/folder1
+	quickurl -s /path/to/file1 -s /path/to/folder1 -p 8080
 {{if .Commands}}
  OPTIONS:
 	{{range .VisibleFlags}}{{.}}
@@ -127,6 +127,8 @@ func StartCLI(cliArgs []string) *CLIParseResult {
 				result.Entries = append(result.Entries, simpleModeFiles...)
 			} else if len(servingArgfiles) > 0 {
 				result.Entries = append(result.Entries, servingArgfiles...)
+			} else {
+				cli.ShowAppHelp(cCtx)
 			}
 			return nil
 		},
