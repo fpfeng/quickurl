@@ -6,7 +6,7 @@ require (
 	github.com/creativeprojects/go-selfupdate v1.4.1
 	github.com/gorilla/mux v1.8.1
 	github.com/sirupsen/logrus v1.9.3
-	github.com/urfave/cli/v2 v2.27.6
+	github.com/urfave/cli/v2 v2.27.7
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 )
 
@@ -14,7 +14,7 @@ require (
 	code.gitea.io/sdk/gitea v0.20.0 // indirect
 	github.com/42wim/httpsig v1.2.1 // indirect
 	github.com/Masterminds/semver/v3 v3.3.1 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
 	github.com/google/go-github/v30 v30.1.0 // indirect
