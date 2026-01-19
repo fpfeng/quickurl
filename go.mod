@@ -5,7 +5,7 @@ go 1.21.5
 require (
 	github.com/creativeprojects/go-selfupdate v1.4.1
 	github.com/gorilla/mux v1.8.1
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/urfave/cli/v2 v2.27.6
 	golang.org/x/exp v0.0.0-20240119083558-1b970713d09a
 )
